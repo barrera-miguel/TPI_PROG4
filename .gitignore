@@ -1,0 +1,32 @@
+# -- Documentación de auditoría (no subir) --
+AUDITORIA_FOOD_STORE.md
+TPI_PROG4_FOOD_STORE_v6.md
+frontend-setup-guide.html
+
+# -- Backend --
+.venv/
+venv/
+.env
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+
+# -- Frontend --
+node_modules/
+dist/
+.env
+.env*.local
+.vite/
+coverage/
+*.tsbuildinfo
+
+# -- IDE / OS --
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
