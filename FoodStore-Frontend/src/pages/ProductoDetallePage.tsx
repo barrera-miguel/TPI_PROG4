@@ -110,27 +110,35 @@ export function ProductoDetallePage() {
               </div>
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-              <label style={{ fontSize: 14, color: 'var(--color-text-muted)', fontWeight: 600 }}>Cantidad:</label>
-              <div className="cart-qty">
-                <button className="cart-qty-btn" onClick={() => setCantidad(c => Math.max(1, c - 1))}>−</button>
-                <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 700 }}>{cantidad}</span>
-                <button className="cart-qty-btn" onClick={() => setCantidad(c => c + 1)} disabled={cantidad >= stockDisponible}>+</button>
-              </div>
-              {cantidadEnCarrito > 0 && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{cantidadEnCarrito} en carrito</span>}
-            </div>
+            {usuario ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+                  <label style={{ fontSize: 14, color: 'var(--color-text-muted)', fontWeight: 600 }}>Cantidad:</label>
+                  <div className="cart-qty">
+                    <button className="cart-qty-btn" onClick={() => setCantidad(c => Math.max(1, c - 1))}>−</button>
+                    <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 700 }}>{cantidad}</span>
+                    <button className="cart-qty-btn" onClick={() => setCantidad(c => c + 1)} disabled={cantidad >= stockDisponible}>+</button>
+                  </div>
+                  {cantidadEnCarrito > 0 && <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{cantidadEnCarrito} en carrito</span>}
+                </div>
 
-            <button
-              className="btn btn-primary btn-lg"
-              style={{ width: '100%' }}
-              disabled={!puedeAgregar}
-              onClick={handleAgregar}
-            >
-              {!producto.disponible ? 'No disponible'
-                : stock <= 0 ? 'Sin stock'
-                : !puedeAgregar ? `Máx. ${stock} en carrito`
-                : `+ Agregar al carrito · $${(Number(producto.precio_venta) * cantidad).toFixed(2)}`}
-            </button>
+                <button
+                  className="btn btn-primary btn-lg"
+                  style={{ width: '100%' }}
+                  disabled={!puedeAgregar}
+                  onClick={handleAgregar}
+                >
+                  {!producto.disponible ? 'No disponible'
+                    : stock <= 0 ? 'Sin stock'
+                    : !puedeAgregar ? `Máx. ${stock} en carrito`
+                    : `+ Agregar al carrito · $${(Number(producto.precio_venta) * cantidad).toFixed(2)}`}
+                </button>
+              </>
+            ) : (
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 14, marginTop: 8 }}>
+                <a href="/login" style={{ color: 'var(--color-accent)', fontWeight: 600 }}>Iniciá sesión</a> para agregar al carrito.
+              </p>
+            )}
           </div>
         </div>
       </div>

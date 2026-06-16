@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useCartStore } from '../stores/cartStore'
+import { useAuthStore } from '../stores/authStore'
 import { useToast } from '../components/Toast'
 import type { ProductoRead } from '../types'
 
@@ -22,6 +23,7 @@ export function ProductCard({ producto: p, linkToDetail = true, showFooter = tru
   const imgUrl = p.imagenes_url?.[0] ? cloudinaryUrl(p.imagenes_url[0]) : null
   const items = useCartStore(s => s.items)
   const agregar = useCartStore(s => s.agregar)
+  const usuario = useAuthStore(s => s.usuario)
   const toast = useToast()
 
   const enCarrito = items.find(i => i.producto.id === p.id)
@@ -78,7 +80,7 @@ export function ProductCard({ producto: p, linkToDetail = true, showFooter = tru
         </div>
       </div>
 
-      {showFooter && (
+      {showFooter && usuario && (
         <div className="product-card-footer">
           {sinStock ? (
             <button className="btn btn-secondary" style={{ width: '100%' }} disabled>

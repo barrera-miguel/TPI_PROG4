@@ -38,6 +38,15 @@ import { IngredientesPage } from './pages/admin/IngredientesPage'
 import { UnidadesMedidaPage } from './pages/admin/UnidadesMedidaPage'
 import { UsuariosPage } from './pages/admin/UsuariosPage'
 
+function HomeRedirect() {
+  const { isAdmin, isPedidos, isStock, isLoading } = useAuthStore()
+  if (isLoading) return null
+  if (isAdmin()) return <Navigate to="/admin" replace />
+  if (isPedidos()) return <Navigate to="/admin/pedidos" replace />
+  if (isStock()) return <Navigate to="/admin/productos" replace />
+  return <ProductosPage />
+}
+
 function AppInner() {
   const { setUsuario, setLoading } = useAuthStore()
   const [cartOpen, setCartOpen] = useState(false)
@@ -65,7 +74,7 @@ function AppInner() {
 
       <Routes>
         {/* Públicas */}
-        <Route path="/" element={<ProductosPage />} />
+        <Route path="/" element={<HomeRedirect />} />
         <Route path="/productos/:id" element={<ProductoDetallePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

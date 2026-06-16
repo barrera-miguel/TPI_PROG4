@@ -68,6 +68,17 @@ export function PedidoDetallePage() {
   const puedeCancel = (esDueño || isPedidos()) && pedido.estado_codigo === 'PENDIENTE'
   const necesitaPago = pedido.forma_pago_codigo === 'MERCADOPAGO' && (!pedido.pago || pedido.pago.estado === 'pendiente')
 
+  const formatDireccion = (snapshot: string) => {
+    try {
+      const d = JSON.parse(snapshot)
+      const lineas = [d.linea1, d.linea2].filter(Boolean).join(', ')
+      const localidad = [d.ciudad, d.provincia, d.codigo_postal].filter(Boolean).join(', ')
+      return { alias: d.alias ?? null, detalle: [lineas, localidad].filter(Boolean).join(' — ') }
+    } catch {
+      return { alias: null, detalle: snapshot }
+    }
+  }
+
   const getTimelineDot = (estado: string) => {
     if (estado === 'CANCELADO') return 'cancelled'
     if (estado === pedido.estado_codigo) return 'active'
@@ -129,12 +140,16 @@ export function PedidoDetallePage() {
               </div>
             </div>
 
-            {pedido.direccion_snapshot && (
-              <div className="card">
-                <h3 style={{ fontWeight: 700, marginBottom: 8 }}>📍 Dirección</h3>
-                <p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{pedido.direccion_snapshot}</p>
-              </div>
-            )}
+            {pedido.direccion_snapshot && (() => {
+              const { alias, detalle } = formatDireccion(pedido.direccion_snapshot!)
+              return (
+                <div className="card">
+                  <h3 style={{ fontWeight: 700, marginBottom: 8 }}>📍 Dirección</h3>
+                  {alias && <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{alias}</p>}
+                  <p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>{detalle}</p>
+                </div>
+              )
+            })()}
 
             {pedido.pago && (
               <div className="card">

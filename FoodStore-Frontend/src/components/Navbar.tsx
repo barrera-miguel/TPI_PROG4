@@ -9,6 +9,7 @@ import { useState } from 'react'
 
 export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
   const { usuario, setUsuario, isAdmin, isPedidos, isStock } = useAuthStore()
+  const isStaffManager = isPedidos() || isStock()
   const cantidadTotal = useCartStore(s => s.cantidadTotal)
   const vaciar = useCartStore(s => s.vaciar)
   const connectionStatus = useWSStore(s => s.connectionStatus)
@@ -38,16 +39,16 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
       </Link>
 
       <div style={{ display: 'flex', gap: 8, flex: 1, alignItems: 'center' }}>
-        <Link to="/" className="btn btn-ghost btn-sm">Catálogo</Link>
-        {usuario && <Link to="/orders" className="btn btn-ghost btn-sm">Mis pedidos</Link>}
-        {usuario && <Link to="/profile/addresses" className="btn btn-ghost btn-sm">Mis direcciones</Link>}
+        {!isStaffManager && <Link to="/" className="btn btn-ghost btn-sm">Catálogo</Link>}
+        {usuario && !isStaffManager && <Link to="/orders" className="btn btn-ghost btn-sm">Mis pedidos</Link>}
+        {usuario && !isStaffManager && <Link to="/profile/addresses" className="btn btn-ghost btn-sm">Mis direcciones</Link>}
         {isAdmin() && <Link to="/admin" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-accent)' }}>Admin</Link>}
         {!isAdmin() && isPedidos() && <Link to="/admin/pedidos" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-accent)' }}>Pedidos</Link>}
         {!isAdmin() && !isPedidos() && isStock() && <Link to="/admin/productos" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-accent)' }}>Stock</Link>}
       </div>
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        {usuario && (
+        {usuario && !(isPedidos() || isStock()) && (
           <button className="btn btn-ghost btn-sm" onClick={onOpenCart} style={{ position: 'relative' }}>
             🛒
             {cantidadTotal() > 0 && (
