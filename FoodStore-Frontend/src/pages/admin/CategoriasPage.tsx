@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { categoriasService } from '../../services/categorias.service'
 import { uploadsService } from '../../services/uploads.service'
 import { Modal, ConfirmModal } from '../../components/Modal'
-import { Pagination } from '../../components/Pagination'
+import { CategoriaTree } from '../../components/CategoriaTree'
 import { SpinnerCenter } from '../../components/Spinner'
 import { EmptyState } from '../../components/EmptyState'
 import { useToast } from '../../components/Toast'
@@ -18,18 +18,33 @@ function getAllDescendants(nodes: CategoriaNodo[], targetId: number): Set<number
   return ids
 }
 
+function filterTree(nodes: CategoriaNodo[], query: string): CategoriaNodo[] {
+  if (!query) return nodes
+  const q = query.toLowerCase()
+  const filter = (ns: CategoriaNodo[]): CategoriaNodo[] => {
+    return ns.reduce<CategoriaNodo[]>((acc, n) => {
+      const hijos = filter(n.hijos)
+      const matches = n.nombre.toLowerCase().includes(q) || (n.descripcion && n.descripcion.toLowerCase().includes(q))
+      if (matches || hijos.length > 0) acc.push({ ...n, hijos })
+      return acc
+    }, [])
+  }
+  return filter(nodes)
+}
+
 export function CategoriasPage() {
-  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
   const [modal, setModal] = useState<'crear' | 'editar' | 'borrar' | null>(null)
   const [sel, setSel] = useState<CategoriaRead | null>(null)
   const [form, setForm] = useState<CategoriaCreate>(EMPTY)
   const toast = useToast(); const qc = useQueryClient()
-  const inv = () => { qc.invalidateQueries({ queryKey: ['categorias'] }); qc.invalidateQueries({ queryKey: ['categorias-arbol'] }) }
+  const inv = () => { qc.invalidateQueries({ queryKey: ['categorias-arbol'] }) }
   const [uploading, setUploading] = useState(false)
   const [imgError, setImgError] = useState<string | null>(null)
 
-  const { data, isLoading } = useQuery({ queryKey: ['categorias', page], queryFn: () => categoriasService.listar({ page, size: 20 }) })
-  const { data: arbol } = useQuery({ queryKey: ['categorias-arbol'], queryFn: categoriasService.arbol })
+  const { data: arbol, isLoading } = useQuery({ queryKey: ['categorias-arbol'], queryFn: categoriasService.arbol })
+
+  const filteredArbol = useMemo(() => arbol ? filterTree(arbol, search) : [], [arbol, search])
 
   const crearMut = useMutation({ mutationFn: (d: CategoriaCreate) => categoriasService.crear(d), onSuccess: () => { toast.success('Categoría creada'); setModal(null); inv() }, onError: (e: any) => toast.error(e.response?.data?.detail ?? 'No se pudo crear la categoría') })
   const editarMut = useMutation({ mutationFn: ({ id, d }: { id: number; d: CategoriaUpdate }) => categoriasService.actualizar(id, d), onSuccess: () => { toast.success('Actualizada'); setModal(null); inv() }, onError: (e: any) => toast.error(e.response?.data?.detail ?? 'No se pudo actualizar la categoría') })
@@ -64,15 +79,18 @@ export function CategoriasPage() {
     }
   }
 
-  const flatCats: { id: number; nombre: string; depth: number }[] = []
-  const flatten = (nodes: any[], d = 0) => nodes.forEach(n => { flatCats.push({ id: n.id, nombre: n.nombre, depth: d }); flatten(n.hijos ?? [], d + 1) })
-  if (arbol) flatten(arbol)
+  const handleSelectParent = (id: number | null) => {
+    setForm(f => ({ ...f, parent_id: id ?? undefined }))
+  }
 
   const openEditar = (c: CategoriaRead) => {
     setSel(c); setForm({ nombre: c.nombre, descripcion: c.descripcion ?? '', parent_id: c.parent_id, imagen_url: c.imagen_url }); setModal('editar')
   }
 
-  // Filtrar categorías que causarían ciclo
+  const openCrearHijo = (parentId: number) => {
+    setForm({ ...EMPTY, parent_id: parentId }); setModal('crear')
+  }
+
   const excludedIds = (modal === 'editar' && sel && arbol) ? getAllDescendants(arbol, sel.id) : new Set<number>()
 
   const FormContent = (
@@ -81,12 +99,19 @@ export function CategoriasPage() {
       <div className="form-group"><label className="form-label">Descripción</label><textarea className="form-textarea" value={form.descripcion ?? ''} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value || undefined }))} /></div>
       <div className="form-group">
         <label className="form-label">Categoría padre</label>
-        <select className="form-select" value={form.parent_id ?? ''} onChange={e => setForm(f => ({ ...f, parent_id: e.target.value ? Number(e.target.value) : undefined }))}>
-          <option value="">Sin padre (raíz)</option>
-          {flatCats.filter(c => modal !== 'editar' || (c.id !== sel?.id && !excludedIds.has(c.id))).map(c => (
-            <option key={c.id} value={c.id}>{'  '.repeat(c.depth)}{c.nombre}</option>
-          ))}
-        </select>
+        {arbol && arbol.length > 0 ? (
+          <div style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: 8, maxHeight: 260, overflowY: 'auto', background: 'var(--color-surface2)' }}>
+            <CategoriaTree
+              nodes={arbol}
+              mode="select-parent"
+              selectedParentId={form.parent_id ?? null}
+              onSelectParent={handleSelectParent}
+              excludeIds={excludedIds}
+            />
+          </div>
+        ) : (
+          <p style={{ fontSize: 13, color: 'var(--color-text-dim)' }}>No hay categorías disponibles.</p>
+        )}
       </div>
       <div className="form-group">
         <label className="form-label">Imagen</label>
@@ -116,41 +141,66 @@ export function CategoriasPage() {
         <h1 className="section-title font-display">🗂️ Categorías</h1>
         <button className="btn btn-primary" onClick={() => { setForm(EMPTY); setModal('crear') }}>+ Nueva categoría</button>
       </div>
-      {isLoading ? <SpinnerCenter /> : !data?.items.length ? <EmptyState icon="🗂️" title="Sin categorías" /> : (
+
+      {isLoading ? <SpinnerCenter /> : !arbol?.length ? <EmptyState icon="🗂️" title="Sin categorías" /> : (
         <>
-          <div className="table-wrapper">
-            <table className="table">
-              <thead><tr><th>Nombre</th><th>Descripción</th><th>Padre</th><th></th></tr></thead>
-              <tbody>
-                {data.items.map(c => {
-                  const padre = flatCats.find(x => x.id === c.parent_id)
-                  return (
-                    <tr key={c.id}>
-                      <td style={{ fontWeight: 600 }}>{c.nombre}</td>
-                      <td style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>{c.descripcion ?? '—'}</td>
-                      <td style={{ fontSize: 13 }}>{padre?.nombre ?? <span style={{ color: 'var(--color-text-dim)' }}>Raíz</span>}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-ghost btn-sm" onClick={() => openEditar(c)}>✏️ Editar</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => { setSel(c); setModal('borrar') }}>🗑</button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+          <div className="filters-bar">
+            <input
+              className="form-input"
+              placeholder="Buscar categoría..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ maxWidth: 320 }}
+            />
           </div>
-          <Pagination page={data.page} pages={data.pages} onChange={setPage} />
+
+          {filteredArbol.length === 0 ? (
+            <EmptyState icon="🔍" title="Sin resultados" />
+          ) : (
+            <div className="card" style={{ padding: 16 }}>
+              <CategoriaTree
+                nodes={filteredArbol}
+                mode="display"
+                onEdit={openEditar}
+                onDelete={(c) => { setSel(c); setModal('borrar') }}
+                onAddChild={openCrearHijo}
+              />
+            </div>
+          )}
         </>
       )}
+
       {(modal === 'crear' || modal === 'editar') && (
-        <Modal title={modal === 'crear' ? 'Nueva categoría' : `Editar: ${sel?.nombre}`} onClose={() => setModal(null)}
-          footer={<><button className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-primary" onClick={() => modal === 'crear' ? crearMut.mutate(form) : editarMut.mutate({ id: sel!.id, d: form })} disabled={crearMut.isPending || editarMut.isPending}>{crearMut.isPending || editarMut.isPending ? 'Guardando...' : 'Guardar'}</button></>}>
+        <Modal
+          title={modal === 'crear' ? 'Nueva categoría' : `Editar: ${sel?.nombre}`}
+          onClose={() => setModal(null)}
+          size="lg"
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button>
+              <button
+                className="btn btn-primary"
+                onClick={() => modal === 'crear' ? crearMut.mutate(form) : editarMut.mutate({ id: sel!.id, d: form })}
+                disabled={crearMut.isPending || editarMut.isPending}
+              >
+                {crearMut.isPending || editarMut.isPending ? 'Guardando...' : 'Guardar'}
+              </button>
+            </>
+          }
+        >
           {FormContent}
         </Modal>
       )}
-      {modal === 'borrar' && sel && <ConfirmModal msg={`¿Eliminar "${sel.nombre}"?`} onConfirm={() => borrarMut.mutate(sel.id)} onCancel={() => setModal(null)} loading={borrarMut.isPending} danger />}
+
+      {modal === 'borrar' && sel && (
+        <ConfirmModal
+          msg={`¿Eliminar "${sel.nombre}"?`}
+          onConfirm={() => borrarMut.mutate(sel.id)}
+          onCancel={() => setModal(null)}
+          loading={borrarMut.isPending}
+          danger
+        />
+      )}
     </div>
   )
 }
