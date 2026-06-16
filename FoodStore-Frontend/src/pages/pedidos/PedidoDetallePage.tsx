@@ -66,7 +66,7 @@ export function PedidoDetallePage() {
 
   const esDueño = usuario?.id === pedido.usuario_id
   const puedeCancel = (esDueño || isPedidos()) && pedido.estado_codigo === 'PENDIENTE'
-  const necesitaPago = pedido.forma_pago_codigo === 'MERCADOPAGO' && (!pedido.pago || pedido.pago.estado === 'pendiente')
+  const necesitaPago = pedido.forma_pago_codigo === 'MERCADOPAGO' && (!pedido.pago || pedido.pago.estado === 'pendiente' || pedido.pago.estado === 'rechazado')
 
   const formatDireccion = (snapshot: string) => {
     try {

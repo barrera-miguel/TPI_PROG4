@@ -5,7 +5,7 @@ import { useWSStore } from '../stores/wsStore'
 import { authService } from '../services/auth.service'
 import { useToast } from './Toast'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
   const { usuario, setUsuario, isAdmin, isPedidos, isStock } = useAuthStore()
@@ -17,6 +17,13 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  useEffect(() => {
+    const handleResize = () => { if (window.innerWidth > 768) setMobileOpen(false) }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const handleLogout = async () => {
     try { await authService.logout() } catch {}
@@ -26,6 +33,7 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
     toast.info('Sesión cerrada')
     navigate('/login')
     setMenuOpen(false)
+    setMobileOpen(false)
   }
 
   return (
@@ -38,7 +46,7 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
         🍔 FoodStore
       </Link>
 
-      <div style={{ display: 'flex', gap: 8, flex: 1, alignItems: 'center' }}>
+      <div className="navbar-links">
         {!isStaffManager && <Link to="/" className="btn btn-ghost btn-sm">Catálogo</Link>}
         {usuario && !isStaffManager && <Link to="/orders" className="btn btn-ghost btn-sm">Mis pedidos</Link>}
         {usuario && !isStaffManager && <Link to="/profile/addresses" className="btn btn-ghost btn-sm">Mis direcciones</Link>}
@@ -47,7 +55,7 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
         {!isAdmin() && !isPedidos() && isStock() && <Link to="/admin/productos" className="btn btn-ghost btn-sm" style={{ color: 'var(--color-accent)' }}>Stock</Link>}
       </div>
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div className="navbar-right">
         {usuario && !(isPedidos() || isStock()) && (
           <button className="btn btn-ghost btn-sm" onClick={onOpenCart} style={{ position: 'relative' }}>
             🛒
@@ -106,6 +114,53 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
           </div>
         )}
       </div>
+
+      {/* Mobile: carrito + hamburger — visibles solo en mobile */}
+      <div className="navbar-mobile-right">
+        {usuario && !(isPedidos() || isStock()) && (
+          <button className="btn btn-ghost btn-sm" onClick={onOpenCart} style={{ position: 'relative' }}>
+            🛒
+            {cantidadTotal() > 0 && (
+              <span style={{ position: 'absolute', top: -4, right: -4, background: 'var(--color-accent)', color: '#fff', borderRadius: '999px', fontSize: 10, fontWeight: 700, width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {cantidadTotal()}
+              </span>
+            )}
+          </button>
+        )}
+        <button className="navbar-hamburger" onClick={() => setMobileOpen(o => !o)} aria-label="Menú">
+          {mobileOpen ? '✕' : '☰'}
+        </button>
+      </div>
+
+      {/* Panel mobile */}
+      {mobileOpen && (
+        <div className="navbar-mobile-menu">
+          {!isStaffManager && <Link to="/" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={() => setMobileOpen(false)}>Catálogo</Link>}
+          {usuario && !isStaffManager && <Link to="/orders" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={() => setMobileOpen(false)}>Mis pedidos</Link>}
+          {usuario && !isStaffManager && <Link to="/profile/addresses" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={() => setMobileOpen(false)}>Mis direcciones</Link>}
+          {isAdmin() && <Link to="/admin" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', color: 'var(--color-accent)' }} onClick={() => setMobileOpen(false)}>Admin</Link>}
+          {!isAdmin() && isPedidos() && <Link to="/admin/pedidos" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', color: 'var(--color-accent)' }} onClick={() => setMobileOpen(false)}>Pedidos</Link>}
+          {!isAdmin() && !isPedidos() && isStock() && <Link to="/admin/productos" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start', color: 'var(--color-accent)' }} onClick={() => setMobileOpen(false)}>Stock</Link>}
+          <hr style={{ border: 'none', borderTop: '1px solid var(--color-border)', margin: '8px 0' }} />
+          {usuario && (
+            <span style={{ fontSize: 11, color: connectionStatus === 'connected' ? 'var(--color-success)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 6, padding: '4px 0' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: connectionStatus === 'connected' ? 'var(--color-success)' : '#d1d5db', flexShrink: 0 }} />
+              {connectionStatus === 'connected' ? 'En vivo' : connectionStatus === 'connecting' ? 'Conectando...' : 'Offline'}
+            </span>
+          )}
+          {!usuario ? (
+            <>
+              <Link to="/login" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={() => setMobileOpen(false)}>Ingresar</Link>
+              <Link to="/register" className="btn btn-primary btn-sm" onClick={() => setMobileOpen(false)}>Registrarse</Link>
+            </>
+          ) : (
+            <>
+              <div style={{ padding: '4px 0', fontSize: 13, color: 'var(--color-text-muted)' }}>{usuario.nombre} {usuario.apellido} · {usuario.roles.join(' · ')}</div>
+              <button className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={handleLogout}>Cerrar sesión</button>
+            </>
+          )}
+        </div>
+      )}
     </nav>
   )
 }

@@ -153,6 +153,7 @@ export function ProductosAdminPage() {
       case 'za': filtered.sort((a, b) => b.nombre.localeCompare(a.nombre)); break
       case 'stock+': filtered.sort((a, b) => a.stock_calculado - b.stock_calculado); break
       case 'stock-': filtered.sort((a, b) => b.stock_calculado - a.stock_calculado); break
+      default: filtered.sort((a, b) => b.id - a.id); break
     }
     return filtered
   }, [data?.items, nombre, filtroDisp, filtroCat, orden])
@@ -194,8 +195,11 @@ export function ProductosAdminPage() {
       }, 0)
       return { costo, venta: costo * (1 + margen / 100) }
     }
-    return { costo: Number(seleccionado.precio_costo_calculado), venta: Number(seleccionado.precio_venta) }
-  }, [editExistingIngs, editNewIngs, form.margen_ganancia, ings?.items, seleccionado])
+    const base = form.precio_base
+      ? parseFloat(form.precio_base) || 0
+      : Number(seleccionado.precio_costo_calculado)
+    return { costo: base, venta: base * (1 + margen / 100) }
+  }, [editExistingIngs, editNewIngs, form.margen_ganancia, form.precio_base, ings?.items, seleccionado])
 
   const handleGuardarEditar = async () => {
     if (!seleccionado) return
@@ -242,6 +246,21 @@ export function ProductosAdminPage() {
           </select>
         </div>
       </div>
+      {((modal === 'crear' && formIngs.length === 0) ||
+        (modal === 'editar' && editExistingIngs.length === 0 && editNewIngs.length === 0)) && (
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">Costo base ($)</label>
+          <input
+            className="form-input"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            value={form.precio_base ?? ''}
+            onChange={e => setForm(f => ({ ...f, precio_base: e.target.value || undefined }))}
+          />
+        </div>
+      )}
       <label className="checkbox-group" style={{ margin: 0 }}>
         <input type="checkbox" checked={form.disponible ?? true} onChange={e => setForm(f => ({ ...f, disponible: e.target.checked }))} />
         Disponible para la venta
@@ -256,14 +275,16 @@ export function ProductosAdminPage() {
               <button onClick={() => handleEliminarImagen(url)} style={{ position: 'absolute', top: 2, right: 2, width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'rgba(0,0,0,.65)', color: '#fff', fontSize: 13, cursor: 'pointer', lineHeight: '20px', padding: 0, textAlign: 'center' }}>×</button>
             </div>
           ))}
-          <label style={{ width: 72, height: 72, borderRadius: 8, border: '2px dashed var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: uploading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', fontSize: 11, gap: 2, flexShrink: 0 }}>
-            <span style={{ fontSize: 20 }}>{uploading ? '⏳' : '+'}</span>
-            <span>{uploading ? 'Subiendo' : 'Imagen'}</span>
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleUpload} disabled={uploading} style={{ display: 'none' }} />
-          </label>
+          {(form.imagenes_url ?? []).length < 1 && (
+            <label style={{ width: 72, height: 72, borderRadius: 8, border: '2px dashed var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', cursor: uploading ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)', fontSize: 11, gap: 2, flexShrink: 0 }}>
+              <span style={{ fontSize: 20 }}>{uploading ? '⏳' : '+'}</span>
+              <span>{uploading ? 'Subiendo' : 'Imagen'}</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handleUpload} disabled={uploading} style={{ display: 'none' }} />
+            </label>
+          )}
         </div>
         {imgError && <p style={{ color: 'var(--color-danger)', fontSize: 12, marginTop: 6, marginBottom: 0 }}>{imgError}</p>}
-        <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 6, marginBottom: 0 }}>JPEG, PNG o WebP · Máx 5 MB</p>
+        <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 6, marginBottom: 0 }}>JPEG, PNG o WebP · Máx 5 MB · 1 imagen por producto</p>
       </div>
     </div>
   )
@@ -414,8 +435,8 @@ export function ProductosAdminPage() {
           {FormContent}
 
           {/* Categorías */}
-          <div style={{ marginTop: 20, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 14px', background: 'var(--color-surface2)', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ marginTop: 20, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}>
+            <div style={{ padding: '10px 14px', background: 'var(--color-surface2)', borderBottom: '1px solid var(--color-border)', borderRadius: 'var(--radius) var(--radius) 0 0' }}>
               <span style={{ fontWeight: 700, fontSize: 13 }}>🗂️ Categorías</span>
             </div>
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -441,8 +462,8 @@ export function ProductosAdminPage() {
           </div>
 
           {/* Ingredientes */}
-          <div style={{ marginTop: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 14px', background: 'var(--color-surface2)', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ marginTop: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}>
+            <div style={{ padding: '10px 14px', background: 'var(--color-surface2)', borderBottom: '1px solid var(--color-border)', borderRadius: 'var(--radius) var(--radius) 0 0' }}>
               <span style={{ fontWeight: 700, fontSize: 13 }}>🥬 Ingredientes</span>
             </div>
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -497,8 +518,8 @@ export function ProductosAdminPage() {
           {FormContent}
 
           {/* Categorías */}
-          <div style={{ marginTop: 20, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 14px', background: 'var(--color-surface2)', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ marginTop: 20, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}>
+            <div style={{ padding: '10px 14px', background: 'var(--color-surface2)', borderBottom: '1px solid var(--color-border)', borderRadius: 'var(--radius) var(--radius) 0 0' }}>
               <span style={{ fontWeight: 700, fontSize: 13 }}>🗂️ Categorías</span>
             </div>
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -530,8 +551,8 @@ export function ProductosAdminPage() {
           </div>
 
           {/* Ingredientes */}
-          <div style={{ marginTop: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
-            <div style={{ padding: '10px 14px', background: 'var(--color-surface2)', borderBottom: '1px solid var(--color-border)' }}>
+          <div style={{ marginTop: 12, border: '1px solid var(--color-border)', borderRadius: 'var(--radius)' }}>
+            <div style={{ padding: '10px 14px', background: 'var(--color-surface2)', borderBottom: '1px solid var(--color-border)', borderRadius: 'var(--radius) var(--radius) 0 0' }}>
               <span style={{ fontWeight: 700, fontSize: 13 }}>🥬 Ingredientes</span>
             </div>
             <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -597,9 +618,8 @@ export function ProductosAdminPage() {
       )}
       {modal === 'stock' && seleccionado && (
         <Modal title="Actualizar stock" onClose={() => setModal(null)}
-          footer={<><button className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-primary" onClick={() => stockMut.mutate({ id: seleccionado.id, d: { stock_directo: stockForm.stock_directo, precio_base: esStockNoAdmin ? undefined : (stockForm.precio_base || undefined) } })} disabled={stockMut.isPending}>Guardar</button></>}>
+          footer={<><button className="btn btn-secondary" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-primary" onClick={() => stockMut.mutate({ id: seleccionado.id, d: { stock_directo: stockForm.stock_directo } })} disabled={stockMut.isPending}>Guardar</button></>}>
           <div className="form-group"><label className="form-label">Stock directo *</label><input className="form-input" type="number" min="0" value={stockForm.stock_directo} onChange={e => setStockForm(f => ({ ...f, stock_directo: Number(e.target.value) }))} /></div>
-          {!esStockNoAdmin && <div className="form-group"><label className="form-label">Precio base ($)</label><input className="form-input" type="number" min="0" step="0.01" value={stockForm.precio_base} onChange={e => setStockForm(f => ({ ...f, precio_base: e.target.value }))} /></div>}
         </Modal>
       )}
       {modal === 'cats' && seleccionado && (
