@@ -11,7 +11,7 @@ Aplicación web full-stack para la gestión integral de un negocio de comidas. P
 
 ## Video de presentación
 
-[Ver video de presentación](https://youtu.be/RCcQ_OiJDJQ)
+[Ver video de presentación](https://youtu.be/8cT_cX9te9Y)
 
 ---
 
